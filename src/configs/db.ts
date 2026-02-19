@@ -1,17 +1,14 @@
-import mongoose from "mongoose";
+// backend/src/configs/db.ts
+import mongoose from 'mongoose';
 
-export const connectDB = async () => {
+const connectDB = async () => {
   try {
-    if (!process.env.MONGO_URI) {
-      throw new Error("MONGO_URI is not defined in environment variables");
-    }
-
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB connected successfully!");
+    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/splito');
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error("❌ MongoDB connection failed:", error);
-    process.exit(1); // stops the server if DB fails
+    console.error('❌ MongoDB connection error:', error);
+    process.exit(1);
   }
 };
 
-export default connectDB
+export default connectDB;

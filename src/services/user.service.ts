@@ -3,6 +3,22 @@ import { UserRepository } from "../repositories/user.repository";
 const userRepo = new UserRepository();
 
 export class UserService {
+  async getUserById(userId: string): Promise<any | null> {
+    try {
+      const user = await userRepo.findById(userId);
+      if (!user) throw new Error("User not found");
+      return {
+        id: user._id.toString(),
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        profileImage: user.profileImage ? `http://localhost:5000${user.profileImage}` : null
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async uploadProfileImage(userId: string, imagePath: string) {
     console.log("🔄 UserService.uploadProfileImage called");
     console.log("   - User ID:", userId);

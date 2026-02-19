@@ -10,4 +10,4 @@ export const RegisterDto = z.object({
   path: ["confirmPassword"],
 });
 
-export type RegisterDtoType = z.infer<typeof RegisterDto>;
+export type RegisterDtoType = z.infer<typeof RegisterDto>; 

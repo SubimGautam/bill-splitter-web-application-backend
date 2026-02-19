@@ -1,25 +1,14 @@
-import express from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import User from '../models/user';
-import auth from '../middleware/auth';
-
+const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const auth = require('../middleware/auth');
 
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password, confirmPassword } = req.body;
-    
-    console.log('📝 Registration attempt:', { username, email });
-
-    // Validate confirmPassword
-    if (password !== confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Passwords do not match'
-      });
-    }
+    const { username, email, password } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -38,21 +27,16 @@ router.post('/register', async (req, res) => {
     const user = new User({
       username,
       email,
-      password: hashedPassword,
-      role: 'user',
-      bio: '',
-      phone: '',
-      location: ''
+      password: hashedPassword
     });
 
     await user.save();
-    console.log('✅ User created successfully:', username);
 
     // Create token
     const token = jwt.sign(
       { userId: user._id, role: user.role },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' } as jwt.SignOptions
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
     res.status(201).json({
@@ -69,7 +53,7 @@ router.post('/register', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Registration error:', error);
+    console.error('Registration error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Server error' 
@@ -81,58 +65,31 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    console.log('='.repeat(50));
-    console.log('🔐 LOGIN ATTEMPT');
-    console.log('='.repeat(50));
-    console.log('📧 Email:', email);
-
-    // Clean inputs
-    const trimmedEmail = email?.trim().toLowerCase();
-    const trimmedPassword = password?.trim();
-
-    if (!trimmedEmail || !trimmedPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and password are required'
-      });
-    }
 
     // Find user
-    const user = await User.findOne({ email: trimmedEmail });
+    const user = await User.findOne({ email });
     if (!user) {
-      console.log('❌ User not found for email:', trimmedEmail);
       return res.status(401).json({ 
         success: false, 
         message: 'Invalid credentials' 
       });
     }
-
-    console.log('✅ User found:', user.username);
 
     // Check password
-    const isMatch = await bcrypt.compare(trimmedPassword, user.password);
-    console.log('🔑 Password match result:', isMatch);
-
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      console.log('❌ Password comparison failed');
       return res.status(401).json({ 
         success: false, 
         message: 'Invalid credentials' 
       });
     }
-
-    console.log('✅ Password matched successfully');
 
     // Create token
     const token = jwt.sign(
       { userId: user._id, role: user.role },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' } as jwt.SignOptions
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
-
-    console.log('✅ Login successful for:', user.username);
-    console.log('='.repeat(50));
 
     res.json({
       success: true,
@@ -148,7 +105,7 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Login error:', error);
+    console.error('Login error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Server error' 
@@ -157,7 +114,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Refresh token
-router.post('/refresh-token', auth, async (req: any, res) => {
+router.post('/refresh-token', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
     
@@ -168,10 +125,11 @@ router.post('/refresh-token', auth, async (req: any, res) => {
       });
     }
 
+    // Generate new token
     const token = jwt.sign(
       { userId: user._id, role: user.role },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' } as jwt.SignOptions
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
     res.json({
@@ -195,4 +153,4 @@ router.post('/refresh-token', auth, async (req: any, res) => {
   }
 });
 
-export default router;
+module.exports = router;
