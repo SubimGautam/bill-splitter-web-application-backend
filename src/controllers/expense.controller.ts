@@ -27,46 +27,59 @@ export const expenseController = {
 
   // Create expense
   createExpense: async (req: AuthRequest, res: Response) => {
-    try {
-      const { description, amount, paidBy, groupId, participants } = req.body;
-      const userId = req.user?.userId;
+  try {
+    const { description, totalAmount, payments, splits, groupId } = req.body;
+    const userId = req.user?.userId;
 
-      console.log('Creating expense:', { description, amount, paidBy, groupId, participants });
+    console.log('Creating expense:', { description, totalAmount, payments, splits, groupId });
 
-      const group = await Group.findOne({ _id: groupId, createdBy: userId });
-      if (!group) {
-        return res.status(404).json({ success: false, message: 'Group not found' });
-      }
-
-      // Validate participants are members
-      for (const p of participants) {
-        if (!group.members.includes(p.name)) {
-          return res.status(400).json({ success: false, message: `Invalid participant: ${p.name}` });
-        }
-      }
-
-      // Validate total sum
-      const totalSplit = participants.reduce((sum: number, p: any) => sum + p.amount, 0);
-      if (Math.abs(totalSplit - amount) > 0.01) {
-        return res.status(400).json({ success: false, message: 'Sum of participants does not match total' });
-      }
-
-      const expense = new Expense({
-        description,
-        amount,
-        paidBy,
-        group: groupId,
-        splits: participants,
-        date: new Date()
-      });
-      await expense.save();
-
-      res.status(201).json({ success: true, data: expense });
-    } catch (error) {
-      console.error('Error in createExpense:', error);
-      res.status(500).json({ success: false, message: 'Server error' });
+    const group = await Group.findOne({ _id: groupId, createdBy: userId });
+    if (!group) {
+      return res.status(404).json({ success: false, message: 'Group not found' });
     }
-  },
+
+    // Validate all payers and splitters are group members
+    const allPeople = [...new Set([...payments.map((p: any) => p.name), ...splits.map((s: any) => s.name)])];
+    for (const name of allPeople) {
+      if (!group.members.includes(name)) {
+        return res.status(400).json({ success: false, message: `Invalid participant: ${name}` });
+      }
+    }
+
+    // Validate total of payments equals total of splits
+    const totalPayments = payments.reduce((sum: number, p: any) => sum + p.amount, 0);
+    const totalSplits = splits.reduce((sum: number, s: any) => sum + s.amount, 0);
+    
+    if (Math.abs(totalPayments - totalAmount) > 0.01) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Sum of payments (${totalPayments}) must equal total amount (${totalAmount})` 
+      });
+    }
+    
+    if (Math.abs(totalSplits - totalAmount) > 0.01) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Sum of splits (${totalSplits}) must equal total amount (${totalAmount})` 
+      });
+    }
+
+    const expense = new Expense({
+      description,
+      totalAmount,
+      payments,
+      splits,
+      group: groupId,
+      date: new Date()
+    });
+    await expense.save();
+
+    res.status(201).json({ success: true, data: expense });
+  } catch (error) {
+    console.error('Error in createExpense:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+},
 
   // Delete expense
   deleteExpense: async (req: AuthRequest, res: Response) => {
