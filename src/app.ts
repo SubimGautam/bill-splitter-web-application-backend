@@ -26,6 +26,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/settlements', settlementRoutes);
+app.use('/uploads', express.static('uploads'));
 
 app.get('/api/test-direct', (req, res) => {
   res.json({ message: 'Direct test route works!' });

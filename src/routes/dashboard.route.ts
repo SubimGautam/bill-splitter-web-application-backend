@@ -1,7 +1,7 @@
 // backend/src/routes/dashboard.route.ts
 import express from 'express';
 import auth from '../middleware/auth';
-import User from '../models/user';
+import User from '../models/user.model';
 import Group from '../models/group.model';
 import Expense from '../models/expense.model';
 

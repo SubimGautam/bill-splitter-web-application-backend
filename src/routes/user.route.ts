@@ -1,38 +1,15 @@
 import express from 'express';
-import User from '../models/user';
+import { UserController } from '../controllers/user.controller';
 import auth from '../middleware/auth';
+import { upload } from '../middleware/upload.middleware';
 
 const router = express.Router();
+const userController = new UserController();
 
 // Get current user
-router.get('/me', auth, async (req: any, res) => {
-  try {
-    const user = await User.findById(req.user.userId).select('-password');
-    if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'User not found' 
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error' 
-    });
-  }
-});
+router.get('/me', auth, userController.getMe.bind(userController));
+
+// Upload profile image
+router.post('/upload-profile-image', auth, upload.single('image'), userController.uploadProfileImage.bind(userController));
 
 export default router;

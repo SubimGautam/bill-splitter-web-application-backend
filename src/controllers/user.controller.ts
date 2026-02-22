@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { UserService } from "../services/user.service";
-import User from "../models/user.model"; // Ensure this import exists
+import User from "../models/user.model";
+import sharp from 'sharp';
+import fs from 'fs';
+import path from 'path';
 
 const userService = new UserService();
 
@@ -11,7 +14,7 @@ export class UserController {
     console.log("=".repeat(50));
 
     try {
-      const userId = req.user?.id;
+      const userId = (req as any).user?.userId;
 
       if (!userId) {
         console.log("❌ No user ID found in request");
@@ -36,7 +39,24 @@ export class UserController {
       console.log("   - Mimetype:", req.file.mimetype);
       console.log("   - Size:", req.file.size, "bytes");
 
-      const imagePath = `/uploads/${req.file.filename}`;
+      // Convert image to JPEG for better compatibility
+      const inputPath = req.file.path;
+      const outputFilename = `profile-${Date.now()}.jpg`;
+      const outputPath = path.join('uploads', outputFilename);
+
+      console.log("🔄 Converting image to JPEG...");
+      
+      await sharp(inputPath)
+        .jpeg({ quality: 85, mozjpeg: true })
+        .toFile(outputPath);
+
+      console.log("✅ Image converted to JPEG successfully");
+
+      // Remove the original uploaded file
+      fs.unlinkSync(inputPath);
+      console.log("🗑️ Original file removed");
+
+      const imagePath = `/uploads/${outputFilename}`;
       console.log("🖼️ Image path to save:", imagePath);
 
       console.log("🔄 Calling userService.uploadProfileImage...");
@@ -67,6 +87,11 @@ export class UserController {
       console.error("Error:", error.message);
       console.error("Stack:", error.stack);
 
+      // Clean up the uploaded file if it exists
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
       res.status(500).json({
         success: false,
         message: error.message || "Failed to upload profile image",
@@ -79,10 +104,9 @@ export class UserController {
     }
   }
 
-  // ── NEW METHOD ──
   async getMe(req: Request, res: Response) {
     try {
-      const userId = req.user?.id;
+      const userId = (req as any).user?.userId;
       if (!userId) {
         return res.status(401).json({
           success: false,
@@ -99,12 +123,18 @@ export class UserController {
         });
       }
 
+      // Construct full URL for profile image
+      let profileImageUrl = user.profileImage;
+      if (profileImageUrl && !profileImageUrl.startsWith('http')) {
+        profileImageUrl = `http://localhost:5000${profileImageUrl}`;
+      }
+
       const userData = {
         id: user._id.toString(),
         username: user.username,
         email: user.email,
         role: user.role,
-        profileImage: user.profileImage ? `http://localhost:5000${user.profileImage}` : null
+        profileImage: profileImageUrl
       };
 
       res.status(200).json({
