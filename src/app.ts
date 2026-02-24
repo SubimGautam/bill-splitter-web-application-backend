@@ -8,7 +8,7 @@ import dashboardRoutes from "./routes/dashboard.route";
 import expenseRoutes from "./routes/expense.route";
 import groupRoutes from "./routes/group.route";
 import settlementRoutes from './routes/settlement.route';
-
+import adminRoutes from './routes/admin.route';
 console.log('✅ Auth routes loaded');
 console.log('✅ User routes loaded'); 
 console.log('✅ Dashboard routes loaded');
@@ -27,6 +27,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/settlements', settlementRoutes);
 app.use('/uploads', express.static('uploads'));
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/test-direct', (req, res) => {
   res.json({ message: 'Direct test route works!' });

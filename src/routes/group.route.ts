@@ -2,10 +2,6 @@ import express from 'express';
 import { groupController } from '../controllers/group.controller';
 import authMiddleware from '../middleware/auth';
 
-console.log('groupController methods:', Object.keys(groupController));
-console.log('getGroupWithBalances exists:', !!groupController.getGroupWithBalances);
-
-
 const router = express.Router();
 
 // Apply auth middleware to all routes

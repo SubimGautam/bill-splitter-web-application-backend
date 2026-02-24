@@ -32,7 +32,6 @@ export const groupController = {
       const groupId = req.params.groupId;
       console.log('Fetching group by ID:', groupId);
       
-      // Check if ID is valid MongoDB ObjectId
       if (!mongoose.Types.ObjectId.isValid(groupId)) {
         console.log('Invalid group ID format:', groupId);
         return res.status(400).json({ success: false, message: 'Invalid group ID format' });
@@ -116,40 +115,30 @@ export const groupController = {
     }
   },
 
-  // NEW: Get group with balances and settlements
-  getGroupWithBalances: async (req: AuthRequest, res: Response) => {
-    try {
-      const groupId = req.params.groupId;
-      console.log('Fetching group with balances for ID:', groupId);
-      
-      const group = await Group.findById(groupId);
-      if (!group) {
-        return res.status(404).json({ success: false, message: 'Group not found' });
-      }
+  // Get group with balances, expenses, and settlements
+ // In group.controller.ts
+getGroupWithBalances: async (req: AuthRequest, res: Response) => {
+  try {
+    const groupId = req.params.groupId;
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ success: false, message: 'Group not found' });
 
-      // Check if user owns this group
-      if (group.createdBy.toString() !== req.user?.userId) {
-        return res.status(403).json({ success: false, message: 'Access denied' });
-      }
+    const expenses = await Expense.find({ group: groupId }).sort({ date: -1 });
+    const settlements = await Settlement.find({ group: groupId }).sort({ date: -1 });
+    const balances = await calculateGroupBalances(groupId, group.members);
 
-      const expenses = await Expense.find({ group: groupId }).sort({ date: -1 });
-      const settlements = await Settlement.find({ group: groupId }).sort({ date: -1 });
-      const balances = await calculateGroupBalances(groupId, group.members);
-
-      console.log('Found expenses:', expenses.length, 'settlements:', settlements.length, 'balances:', balances.length);
-
-      res.json({
-        success: true,
-        data: {
-          group,
-          expenses,
-          settlements,
-          balances,
-        },
-      });
-    } catch (error) {
-      console.error('Error in getGroupWithBalances:', error);
-      res.status(500).json({ success: false, message: 'Server error' });
-    }
-  },
+    res.json({
+      success: true,
+      data: {
+        group,
+        expenses,
+        settlements,
+        balances,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+},
 };
